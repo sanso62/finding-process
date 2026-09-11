@@ -6,3 +6,9 @@
 **/bin/
 **/obj/
 /.dotnet/
+
+# Local tests, documentation, and experiment helpers
+/AGENTS.md
+/docs/
+/scripts/
+/tests/
