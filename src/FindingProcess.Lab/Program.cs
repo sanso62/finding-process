@@ -14,9 +14,11 @@ internal static class Program
                 ["baseline"] => LabRunner.Run("artifacts"),
                 ["baseline", var directory] => LabRunner.Run(directory),
                 ["restore-demo", var demoManifest] => RestoreDemo.Run(demoManifest),
-                ["rebind-lab"] => RebindLab.Run(false),
-                ["rebind-lab", "--terminal"] => RebindLab.Run(true),
-                ["rebind-lab", "--rollback"] => RebindLab.Run(false, true),
+                ["restore-demo", var vscodeManifest, "--vscode"] => RestoreDemo.Run(vscodeManifest, TerminalHost.VSCode),
+                ["rebind-lab"] => RebindLab.Run(TerminalHost.Hidden),
+                ["rebind-lab", "--terminal"] => RebindLab.Run(TerminalHost.WindowsTerminal),
+                ["rebind-lab", "--vscode"] => RebindLab.Run(TerminalHost.VSCode),
+                ["rebind-lab", "--rollback"] => RebindLab.Run(TerminalHost.Hidden, true),
                 ["cleanup-session", var sessionPath] => RebindLab.Cleanup(sessionPath),
                 ["rebind-worker", var request, var result] => RemoteRebind.Run(request, result),
                 ["anchor", var stateFile, var releaseFile, var attach] when int.TryParse(attach, out var anchorPid)
@@ -46,9 +48,9 @@ internal static class Program
     private static int Usage(int status)
     {
         Console.WriteLine("FindingProcess.Lab baseline [artifact-directory]");
-        Console.WriteLine("FindingProcess.Lab rebind-lab [--terminal | --rollback]");
+        Console.WriteLine("FindingProcess.Lab rebind-lab [--terminal | --vscode | --rollback]");
         Console.WriteLine("FindingProcess.Lab fixture <state-file> --forever   (commands: add 5, quit)");
-        Console.WriteLine("FindingProcess.Lab restore-demo <artifacts/live-*/demo.json>");
+        Console.WriteLine("FindingProcess.Lab restore-demo <artifacts/live-*/demo.json> [--vscode]");
         Console.WriteLine("Creates its own hidden console fixture; verifies original-console I/O and state preservation.");
         Console.WriteLine("Experimental direct rebind is limited to attested native x64 lab fixtures. No arbitrary-PID recovery command is exposed.");
         return status;

@@ -22,8 +22,9 @@ internal static class RebindLab
         }
     }
 
-    internal static int Run(bool terminal, bool rollbackTest = false)
+    internal static int Run(TerminalHost host, bool rollbackTest = false)
     {
+        var terminal = host != TerminalHost.Hidden;
         var directory = Path.GetFullPath(Path.Combine("artifacts", "rebind-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(directory);
         string FileIn(string name) => Path.Combine(directory, name);
@@ -49,18 +50,7 @@ internal static class RebindLab
             LabRunner.Observe(fixturePath, directory, before.Identity, "before", 7, 80, 25);
             guardian = LabRunner.StartHidden("anchor", guardianPath, release, fixture.Id.ToString());
             var guardianState = LabRunner.WaitForState(guardianPath, guardian, _ => true);
-            if (terminal)
-            {
-                var launch = new ProcessStartInfo("wt.exe") { UseShellExecute = false, CreateNoWindow = true };
-                foreach (var arg in new[] { "-w", "new", "new-tab", "--title", title, "--suppressApplicationTitle",
-                             Environment.ProcessPath!, "anchor", anchorPath, release, "0" }) launch.ArgumentList.Add(arg);
-                using var starter = Process.Start(launch) ?? throw new IOException("Could not launch Windows Terminal.");
-                var watch = Stopwatch.StartNew();
-                while (!File.Exists(anchorPath) && watch.Elapsed.TotalSeconds < 15) Thread.Sleep(50);
-                if (!File.Exists(anchorPath)) throw new TimeoutException("Windows Terminal anchor did not start.");
-                anchor = RemoteRebind.Validate(JsonFile.Read<FixtureState>(anchorPath).Identity);
-            }
-            else anchor = LabRunner.StartHidden("anchor", anchorPath, release, "0");
+            anchor = TerminalDestination.Start(host, directory, title, before.Identity);
             var anchorState = LabRunner.WaitForState(anchorPath, anchor, _ => true);
             Record("destination-ready", anchorState);
             var requestPath = FileIn("request.json");
@@ -113,7 +103,7 @@ internal static class RebindLab
             var challenge = Guid.NewGuid().ToString("N");
             JsonFile.Write(FileIn("session.json"), new
             {
-                Directory = directory, Title = title, Terminal = terminal, Target = before.Identity,
+                Directory = directory, Title = title, Terminal = terminal, Host = host.ToString(), Target = before.Identity,
                 Before = before, After = after, WorkerPid = workerPid, AnchorPid = anchor.Id, GuardianPid = guardian.Id,
                 AllHelpersExited = true, InputToTest = $"add 11 {challenge}",
                 HandoffStatus = rollbackTest ? "rollback-verified" : terminal ? "awaiting-terminal-io-verification" : "hidden-console-rebind-verified",
@@ -121,7 +111,7 @@ internal static class RebindLab
             });
             Record("mechanism-verified", new { SamePidAndMemory = true, terminal });
             keepFixture = terminal;
-            Console.WriteLine($"{(rollbackTest ? "Rollback" : "Rebind mechanism")}: PASS; Windows Terminal direct I/O: {(terminal ? "AWAITING VERIFICATION" : "NOT TESTED")}");
+            Console.WriteLine($"{(rollbackTest ? "Rollback" : "Rebind mechanism")}: PASS; {host} direct I/O: {(terminal ? "AWAITING VERIFICATION" : "NOT TESTED")}");
             Console.WriteLine($"Session: {FileIn("session.json")}");
             if (terminal) Console.WriteLine($"Fixture expires after 300 seconds. In {title}, enter: add 11 {challenge}");
             return 0;

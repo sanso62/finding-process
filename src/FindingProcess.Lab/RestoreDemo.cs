@@ -6,7 +6,7 @@ internal static class RestoreDemo
 {
     private sealed record Demo(string StatePath, Identity Target);
 
-    internal static int Run(string manifestPath)
+    internal static int Run(string manifestPath, TerminalHost host = TerminalHost.WindowsTerminal)
     {
         manifestPath = Path.GetFullPath(manifestPath);
         var liveDirectory = Path.GetDirectoryName(manifestPath)!;
@@ -41,17 +41,8 @@ internal static class RestoreDemo
             Record("existing-demo-validated", before);
             guardian = LabRunner.StartHidden("anchor", FileIn("guardian.json"), release, target.Id.ToString());
             var guardianState = LabRunner.WaitForState(FileIn("guardian.json"), guardian, _ => true);
-            var launch = new ProcessStartInfo("wt.exe") { UseShellExecute = false, CreateNoWindow = true };
-            foreach (var arg in new[] { "-w", "new", "new-tab", "--title", title, "--suppressApplicationTitle",
-                         Environment.ProcessPath!, "anchor", FileIn("anchor.json"), release, "0" }) launch.ArgumentList.Add(arg);
-            using (var starter = Process.Start(launch) ?? throw new IOException("Could not open destination Terminal."))
-            {
-                var watch = Stopwatch.StartNew();
-                while (!File.Exists(FileIn("anchor.json")) && watch.Elapsed.TotalSeconds < 15) Thread.Sleep(50);
-                if (!File.Exists(FileIn("anchor.json"))) throw new TimeoutException("Destination Terminal did not become ready.");
-            }
+            anchor = TerminalDestination.Start(host, directory, title, demo.Target);
             var anchorState = JsonFile.Read<FixtureState>(FileIn("anchor.json"));
-            anchor = RemoteRebind.Validate(anchorState.Identity);
             JsonFile.Write(FileIn("request.json"), new RebindRequest(demo.Target, anchorState.Identity,
                 guardianState.Identity, before.MainThreadId, TargetImagePath: imagePath));
             var start = new ProcessStartInfo(Environment.ProcessPath!)
@@ -81,14 +72,14 @@ internal static class RestoreDemo
             JsonFile.Write(FileIn("after.json"), after);
             JsonFile.Write(FileIn("session.json"), new
             {
-                Directory = directory, StatePath = demo.StatePath, Title = title, Terminal = true, LiveDemo = true,
+                Directory = directory, StatePath = demo.StatePath, Title = title, Terminal = true, LiveDemo = true, Host = host.ToString(),
                 Target = demo.Target, Before = before, After = after, WorkerPid = workerPid,
                 AnchorPid = anchor.Id, GuardianPid = guardian.Id, AllHelpersExited = true,
                 InputToTest = $"add 0 {Guid.NewGuid():N}", DirectHandoffVerified = false,
                 HandoffStatus = "awaiting-terminal-io-verification"
             });
             Record("same-demo-running-in-terminal", after);
-            Console.WriteLine($"Restored existing PID: {target.Id}; value retained: {after.Value}");
+            Console.WriteLine($"Restored existing PID: {target.Id}; value retained: {after.Value}; destination: {host}");
             Console.WriteLine($"Session: {FileIn("session.json")}");
             return 0;
         }

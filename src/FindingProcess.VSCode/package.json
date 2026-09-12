@@ -1,0 +1,10 @@
+{
+  "name": "finding-process-terminal",
+  "displayName": "Finding Process Terminal",
+  "publisher": "finding-process",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.90.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "description": "Opens the native integrated terminal for an isolated Finding Process handoff."
+}
