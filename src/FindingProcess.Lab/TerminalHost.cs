@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace FindingProcess.Lab;
 
-internal enum TerminalHost { Hidden, WindowsTerminal, VSCode }
+internal enum TerminalHost { Current, Hidden, WindowsTerminal, VSCode }
 
 internal static class TerminalDestination
 {
@@ -10,6 +10,12 @@ internal static class TerminalDestination
     {
         var statePath = Path.Combine(directory, "anchor.json");
         var release = Path.Combine(directory, "release");
+        if (host == TerminalHost.Current)
+        {
+            var anchor = LabRunner.StartHidden("anchor", statePath, release, Environment.ProcessId.ToString());
+            try { LabRunner.WaitForState(statePath, anchor, _ => true); return anchor; }
+            catch { anchor.Dispose(); throw; }
+        }
         if (host == TerminalHost.Hidden)
             return LabRunner.StartHidden("anchor", statePath, release, "0");
 

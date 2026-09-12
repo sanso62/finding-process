@@ -77,7 +77,7 @@ internal static class RemoteRebind
         catch { process.Dispose(); throw; }
     }
 
-    private static byte[] Build(Process target, nint data, int destination, int guardian)
+    internal static byte[] Build(Process target, nint data, int destination, int guardian, bool preserveConsoleModes = true)
     {
         using var local = Process.GetCurrentProcess();
         var module = NativeLibrary.Load("kernel32.dll");
@@ -106,8 +106,11 @@ internal static class RemoteRebind
             {
                 Call("GetHandleInformation", 9 + i, new(i * 8, true), new(data.ToInt64() + (3 + i) * 8));
                 asm.FailTo("end");
-                Call("GetConsoleMode", 12 + i, new(i * 8, true), new(data.ToInt64() + (6 + i) * 8));
-                asm.FailTo("end");
+                if (preserveConsoleModes)
+                {
+                    Call("GetConsoleMode", 12 + i, new(i * 8, true), new(data.ToInt64() + (6 + i) * 8));
+                    asm.FailTo("end");
+                }
             }
             for (var i = 0; i < 3; i++)
             {
@@ -118,17 +121,33 @@ internal static class RemoteRebind
             asm.FailTo("restore");
             Call("AttachConsole", 19, new Argument(destination));
             asm.FailTo("rollback");
-            Call("SetConsoleMode", 20, new(0, true), new(6 * 8, true));
-            asm.FailTo("rollback");
-            Call("GetConsoleMode", 21, new(8, true), new(data.ToInt64() + 25 * 8));
-            asm.FailTo("rollback");
+            // Codex reopens its bound handles in the destination while its threads are
+            // paused; its old bound handles cannot query modes from a different console.
+            if (preserveConsoleModes)
+            {
+                Call("SetConsoleMode", 20, new(0, true), new(6 * 8, true));
+                asm.FailTo("rollback");
+                Call("SetConsoleMode", 30, new(8, true), new(7 * 8, true));
+                asm.FailTo("rollback");
+                Call("SetConsoleMode", 31, new(16, true), new(8 * 8, true));
+                asm.FailTo("rollback");
+                Call("GetConsoleMode", 21, new(8, true), new(data.ToInt64() + 25 * 8));
+                asm.FailTo("rollback");
+            }
             asm.SetStatus(1); asm.Jump("restore");
             asm.Label("rollback");
             Call("FreeConsole", 29);
             Call("AttachConsole", 22, new Argument(guardian));
             asm.FailTo("rollback-failed");
-            Call("SetConsoleMode", 23, new(0, true), new(6 * 8, true));
-            asm.FailTo("rollback-failed");
+            if (preserveConsoleModes)
+            {
+                Call("SetConsoleMode", 23, new(0, true), new(6 * 8, true));
+                asm.FailTo("rollback-failed");
+                Call("SetConsoleMode", -1, new(8, true), new(7 * 8, true));
+                asm.FailTo("rollback-failed");
+                Call("SetConsoleMode", -1, new(16, true), new(8 * 8, true));
+                asm.FailTo("rollback-failed");
+            }
             asm.SetStatus(2);
             asm.Jump("restore");
             asm.Label("rollback-failed");

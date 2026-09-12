@@ -4,6 +4,7 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        if (args.FirstOrDefault() == "codex-worker") Console.OutputEncoding = new System.Text.UTF8Encoding(false);
         // Cache stderr while it still refers to the launcher's pipe; observers detach their console.
         var errorOutput = Console.Error;
         try
@@ -11,9 +12,9 @@ internal static class Program
             if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows is required.");
             return args switch
             {
-                [] or ["--terminal"] => ProcessPicker.Run(),
-                ["--vscode"] => ProcessPicker.Run(TerminalHost.VSCode),
+                [] => ProcessPicker.Run(),
                 ["list"] => ProcessPicker.Run(listOnly: true),
+                ["codex-worker", var codexRequest, var codexResult] => CodexHandoff.Worker(codexRequest, codexResult),
                 ["baseline"] => LabRunner.Run("artifacts"),
                 ["baseline", var directory] => LabRunner.Run(directory),
                 ["restore-demo", var demoManifest] => RestoreDemo.Run(demoManifest),
@@ -50,14 +51,15 @@ internal static class Program
 
     private static int Usage(int status)
     {
-        Console.WriteLine("finding-process [--terminal | --vscode]  (Up/Down: select, Enter: transfer, Ctrl+C: exit)");
+        Console.WriteLine("finding-process  (current terminal; Up/Down: select, Enter: transfer, Ctrl+C: exit)");
         Console.WriteLine("finding-process list");
         Console.WriteLine("FindingProcess.Lab baseline [artifact-directory]");
         Console.WriteLine("FindingProcess.Lab rebind-lab [--terminal | --vscode | --rollback]");
         Console.WriteLine("FindingProcess.Lab fixture <state-file> --forever   (commands: add 5, quit)");
         Console.WriteLine("FindingProcess.Lab restore-demo <artifacts/live-*/demo.json> [--vscode]");
         Console.WriteLine("Creates its own hidden console fixture; verifies original-console I/O and state preservation.");
-        Console.WriteLine("Experimental direct rebind is limited to attested native x64 lab fixtures. No arbitrary-PID recovery command is exposed.");
+        Console.WriteLine("Experimental direct rebind supports attested x64 lab fixtures and the verified Windows x64 Codex CLI 0.154.0 binary.");
+        Console.WriteLine("Other applications and Codex builds remain unsupported. No arbitrary-PID recovery command is exposed.");
         return status;
     }
 }

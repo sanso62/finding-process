@@ -3,7 +3,10 @@ using System.Diagnostics;
 namespace FindingProcess.Lab;
 
 internal sealed record TransferTarget(string StatePath, string ImagePath, Identity Identity);
-internal sealed record ProcessEntry(int Pid, string Name, TransferTarget? Target);
+internal sealed record ProcessEntry(int Pid, string Name, TransferTarget? Target, CodexTarget? Codex = null)
+{
+    internal bool CanTransfer => Target is not null || Codex is not null;
+}
 
 internal static class ProcessCatalog
 {
@@ -37,10 +40,13 @@ internal static class ProcessCatalog
                 try
                 {
                     if (process.Id == current.Id || process.SessionId != current.SessionId) continue;
-                    entries.Add(new(process.Id, process.ProcessName, targets.GetValueOrDefault(process.Id)));
+                    CodexTarget? codex = null;
+                    try { codex = CodexProcess.Identify(process); }
+                    catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                    entries.Add(new(process.Id, process.ProcessName, targets.GetValueOrDefault(process.Id), codex));
                 }
                 catch (Exception error) when (error is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-        return entries.OrderByDescending(p => p.Target is not null).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+        return entries.OrderByDescending(p => p.CanTransfer).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(p => p.Pid).ToList();
     }
 }

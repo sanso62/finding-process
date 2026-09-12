@@ -4,7 +4,7 @@ namespace FindingProcess.Lab;
 
 internal static class ProcessPicker
 {
-    internal static int Run(TerminalHost host = TerminalHost.WindowsTerminal, bool listOnly = false)
+    internal static int Run(bool listOnly = false)
     {
         var entries = ProcessCatalog.Read();
         if (listOnly || Console.IsInputRedirected || Console.IsOutputRedirected)
@@ -21,6 +21,7 @@ internal static class ProcessPicker
         var rowCount = Math.Min(entries.Count, Math.Min(10, Math.Max(1, Console.WindowHeight - 3)));
         var top = 0;
         TransferTarget? target = null;
+        CodexTarget? codex = null;
         var hint = "↑↓ 선택 · Enter 이관 · Ctrl+C 종료";
         try
         {
@@ -47,7 +48,8 @@ internal static class ProcessPicker
                 if (key.Key == ConsoleKey.DownArrow) selected = Math.Min(entries.Count - 1, selected + 1);
                 if (key.Key != ConsoleKey.Enter) continue;
                 target = entries[selected].Target;
-                if (target is not null) break;
+                codex = entries[selected].Codex;
+                if (target is not null || codex is not null) break;
                 hint = "이 프로세스는 아직 이관 미지원 · ↑↓ 선택 · Ctrl+C 종료";
             }
         }
@@ -59,17 +61,17 @@ internal static class ProcessPicker
             Console.TreatControlCAsInput = originalControlC;
         }
 
-        Console.WriteLine($"PID {target.Identity.Pid} → {host} 연결 중...");
+        Console.WriteLine($"PID {entries[selected].Pid} → 현재 터미널 연결 중...");
         // Allow the native operation to unwind safely if Ctrl+C arrives during the handoff.
         ConsoleCancelEventHandler finishTransfer = (_, e) => e.Cancel = true;
         Console.CancelKeyPress += finishTransfer;
-        try { return RestoreDemo.Run(target, host); }
+        try { return CurrentTerminal.Run(target, codex); }
         catch (Exception error) { Console.Error.WriteLine($"이관하지 못했습니다: {error.Message}"); return 1; }
         finally { Console.CancelKeyPress -= finishTransfer; }
     }
 
     private static string Label(ProcessEntry entry) =>
-        $"{entry.Pid,7}  {entry.Name}  [{(entry.Target is null ? "미지원" : "이관 가능")}]";
+        $"{entry.Pid,7}  {entry.Name}  [{(entry.Codex is not null ? "Codex CLI · 이관 가능" : entry.CanTransfer ? "이관 가능" : "미지원")}]";
 
     private static void WriteLineAt(int row, string value)
     {

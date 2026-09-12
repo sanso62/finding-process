@@ -86,8 +86,11 @@ internal static class RestoreDemo
                 HandoffStatus = "awaiting-terminal-io-verification"
             });
             Record("same-demo-running-in-terminal", after);
-            Console.WriteLine($"Restored existing PID: {target.Id}; value retained: {after.Value}; destination: {host}");
-            Console.WriteLine($"Session: {FileIn("session.json")}");
+            if (host != TerminalHost.Current)
+            {
+                Console.WriteLine($"Restored existing PID: {target.Id}; value retained: {after.Value}; destination: {host}");
+                Console.WriteLine($"Session: {FileIn("session.json")}");
+            }
             return 0;
         }
         catch (Exception error)

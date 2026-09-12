@@ -22,7 +22,7 @@ internal static class Anchor
             var identity = new Identity(process.Id, process.StartTime.ToUniversalTime().Ticks,
                 Convert.ToHexString(bytes), memory.ToInt64());
             Native.Check(Native.GetConsoleScreenBufferInfo(Native.GetStdHandle(-11), out var info), "Anchor console");
-            Native.Check(Native.SetConsoleMode(Native.GetStdHandle(-10), 8), "Anchor input mode");
+            if (attachPid == 0) Native.Check(Native.SetConsoleMode(Native.GetStdHandle(-10), 8), "Anchor input mode");
             JsonFile.Write(statePath, new FixtureState(identity, 1, 0, "", info.Size.X, info.Size.Y, null));
             var watch = Stopwatch.StartNew();
             while (!File.Exists(releasePath) && watch.Elapsed.TotalSeconds < 300) Thread.Sleep(50);
