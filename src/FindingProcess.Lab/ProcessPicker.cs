@@ -9,7 +9,7 @@ internal static class ProcessPicker
         var entries = ProcessCatalog.Read();
         if (listOnly || Console.IsInputRedirected || Console.IsOutputRedirected)
         {
-            foreach (var entry in entries) Console.WriteLine(Label(entry));
+            foreach (var entry in entries) Console.WriteLine(Label(entry, fullPath: true));
             return 0;
         }
         if (entries.Count == 0) { Console.WriteLine("실행 중인 프로세스가 없습니다."); return 0; }
@@ -70,8 +70,13 @@ internal static class ProcessPicker
         finally { Console.CancelKeyPress -= finishTransfer; }
     }
 
-    private static string Label(ProcessEntry entry) =>
-        $"{entry.Pid,7}  {entry.Name}  [{(entry.Codex is not null ? "Codex CLI · 이관 가능" : entry.CanTransfer ? "이관 가능" : "미지원")}]";
+    private static string Label(ProcessEntry entry, bool fullPath = false)
+    {
+        var detail = entry.Display is { } display
+            ? $"  {display.FolderLabel(fullPath)} · {display.StartedLocal:MM-dd HH:mm} 시작" : "";
+        var label = $"{entry.Pid,7}  {entry.Name}{detail}  [{(entry.Codex is not null ? "Codex CLI · 이관 가능" : entry.CanTransfer ? "이관 가능" : "미지원")}]";
+        return string.Concat(label.EnumerateRunes().Where(rune => !Rune.IsControl(rune)).Select(rune => rune.ToString()));
+    }
 
     private static void WriteLineAt(int row, string value)
     {
