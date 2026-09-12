@@ -18,12 +18,19 @@ internal static class RestoreDemo
             throw new InvalidDataException("Unexpected demo state path.");
         var imagePath = Path.Combine(artifacts.Parent!.FullName,
             "src", "FindingProcess.Lab", "bin", "Release", "net9.0-windows", "FindingProcess.Lab.exe");
+        return Run(new TransferTarget(demo.StatePath, imagePath, demo.Target), host);
+    }
+
+    internal static int Run(TransferTarget selected, TerminalHost host)
+    {
+        var demo = new Demo(selected.StatePath, selected.Identity);
+        var imagePath = selected.ImagePath;
         using var target = RemoteRebind.Validate(demo.Target, imagePath);
         var before = JsonFile.Read<FixtureState>(demo.StatePath);
         if (before.Identity != demo.Target || before.Error is not null || before.MainThreadId == 0)
             throw new InvalidDataException("Demo state is not the live, healthy fixture.");
 
-        var directory = Path.Combine(artifacts.FullName, "restore-" + Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(ProjectPaths.Artifacts, "restore-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         string FileIn(string name) => Path.Combine(directory, name);
         var release = FileIn("release");

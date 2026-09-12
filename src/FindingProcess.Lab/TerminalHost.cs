@@ -22,7 +22,7 @@ internal static class TerminalDestination
         }
         else
         {
-            var extension = Path.GetFullPath(Path.Combine("src", "FindingProcess.VSCode"));
+            var extension = Path.Combine(ProjectPaths.Root, "src", "FindingProcess.VSCode");
             if (!File.Exists(Path.Combine(extension, "package.json")))
                 throw new FileNotFoundException("Run from the repository root; src/FindingProcess.VSCode is required.");
             var code = FindCode();

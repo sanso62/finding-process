@@ -11,6 +11,9 @@ internal static class Program
             if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows is required.");
             return args switch
             {
+                [] or ["--terminal"] => ProcessPicker.Run(),
+                ["--vscode"] => ProcessPicker.Run(TerminalHost.VSCode),
+                ["list"] => ProcessPicker.Run(listOnly: true),
                 ["baseline"] => LabRunner.Run("artifacts"),
                 ["baseline", var directory] => LabRunner.Run(directory),
                 ["restore-demo", var demoManifest] => RestoreDemo.Run(demoManifest),
@@ -34,7 +37,7 @@ internal static class Program
                          width is >= 40 and <= 120 && height is >= 10 and <= 40 &&
                          (challenge == "quit" || Guid.TryParseExact(challenge, "N", out _))
                     => Observer.Run(state, report, started, challenge, add, width, height),
-                [] or ["--help"] => Usage(0),
+                ["--help"] => Usage(0),
                 _ => Usage(2)
             };
         }
@@ -47,6 +50,8 @@ internal static class Program
 
     private static int Usage(int status)
     {
+        Console.WriteLine("finding-process [--terminal | --vscode]  (Up/Down: select, Enter: transfer, Ctrl+C: exit)");
+        Console.WriteLine("finding-process list");
         Console.WriteLine("FindingProcess.Lab baseline [artifact-directory]");
         Console.WriteLine("FindingProcess.Lab rebind-lab [--terminal | --vscode | --rollback]");
         Console.WriteLine("FindingProcess.Lab fixture <state-file> --forever   (commands: add 5, quit)");

@@ -50,6 +50,22 @@ Windows x64와 .NET 9 SDK, 목적지에 따라 Windows Terminal 또는 VS Code�
 저장소 루트의 PowerShell에서 실행한다.
 
 ```powershell
+.\finding-process.cmd           # 목록에서 ↑↓ 선택, Enter로 Windows Terminal에 이관
+.\finding-process.cmd --vscode  # 선택한 프로세스를 VS Code 통합 터미널에 이관
+.\finding-process.cmd list      # 목록만 출력
+```
+
+명령어 바로 아래에 최대 10개 항목을 표시하며, 방향키로 이동하면 나머지 항목도 볼 수 있다.
+Ctrl+C로 선택을 종료한다. 현재 로그인 세션의 프로세스를 표시하고, 이관 가능한 항목을 먼저 보여준다.
+현재는 신원을 검증한 이 프로젝트의 시험 프로세스만 이관할 수 있으며, `미지원` 항목은 이관하지 않는다.
+Enter는 기존 프로세스를 유지한 채 새 터미널에 연결한다. 이관 작업이 이미 시작된 뒤의 Ctrl+C는
+프로세스 보호를 위해 해당 작업이 끝날 때까지 종료를 보류한다.
+
+저장소 경로가 사용자 PATH에 등록되어 있으면 다른 폴더에서도 `finding-process`로 호출할 수 있다.
+첫 실행과 소스 변경 후에는 자동 빌드하며, 실행 중인 시험 프로세스의 파일을 덮어쓰지 않도록 빌드 결과를
+`artifacts/cli/`의 소스별 폴더에 보관한다.
+
+```powershell
 dotnet build src/FindingProcess.Lab/FindingProcess.Lab.csproj -c Release
 $lab = './src/FindingProcess.Lab/bin/Release/net9.0-windows/FindingProcess.Lab.exe'
 
@@ -105,6 +121,6 @@ VS Code에서는 **터미널의 PowerShell 셸이 남아 대상 종료를 기다
 & $lab fixture ./artifacts/manual/fixture.json --forever
 ```
 
-일반 프로세스 탐색·복구는 아직 구현하지 않았다. 콘솔 호스트를 강제 종료한 로컬 실험에서는
+일반 프로세스의 복구는 아직 구현하지 않았다. 콘솔 호스트를 강제 종료한 로컬 실험에서는
 시험 프로세스도 입력 API 오류로 종료되었으므로, 비정상 종료 후 살아남은 프로세스의 복구는
 아직 입증하지 못했다.
